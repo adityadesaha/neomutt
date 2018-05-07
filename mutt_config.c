@@ -730,6 +730,9 @@ struct ConfigSet *init_config(size_t size)
 #ifdef USE_HCACHE
   CONFIG_INIT(hcache);
 #endif
+#ifdef USE_DEVEL_HELP
+  CONFIG_INIT(help);
+#endif
   CONFIG_INIT(helpbar);
   CONFIG_INIT(history);
 #ifdef USE_IMAP
