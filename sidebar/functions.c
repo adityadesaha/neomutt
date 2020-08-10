@@ -43,20 +43,39 @@ struct MuttWindow;
  */
 bool select_next(struct SidebarWindowData *wdata)
 {
-  if ((wdata->entry_count == 0) || (wdata->hil_index < 0))
+  if (ARRAY_EMPTY(&wdata->entries) || (wdata->hil_index < 0))
     return false;
 
-  int entry = wdata->hil_index;
-
-  do
+  struct SbEntry **sbep = NULL;
+  ARRAY_FOREACH_FROM(sbep, &wdata->entries, wdata->hil_index + 1)
   {
-    entry++;
-    if (entry == wdata->entry_count)
-      return false;
-  } while (wdata->entries[entry]->is_hidden);
+    if (!(*sbep)->is_hidden)
+    {
+      wdata->hil_index = ARRAY_FOREACH_IDX;
+      return true;
+    }
+  }
 
-  wdata->hil_index = entry;
-  return true;
+  return false;
+}
+
+/**
+ * next_new - Return the next mailbox with new messages
+ * @param wdata SidebarWindowData struct
+ * @param begin Starting index for searching
+ * @param end   Ending index for searching
+ * @retval sbe  Pointer to the first entry with new messages
+ * @retval NULL None could be found
+ */
+static struct SbEntry **next_new(struct SidebarWindowData *wdata, size_t begin, size_t end)
+{
+  struct SbEntry **sbep = NULL;
+  ARRAY_FOREACH_FROM_TO(sbep, &wdata->entries, begin, end)
+  {
+    if ((*sbep)->mailbox->has_new && (*sbep)->mailbox->msg_unread != 0)
+      return sbep;
+  }
+  return NULL;
 }
 
 /**
@@ -68,28 +87,20 @@ bool select_next(struct SidebarWindowData *wdata)
  */
 static bool select_next_new(struct SidebarWindowData *wdata)
 {
-  if ((wdata->entry_count == 0) || (wdata->hil_index < 0))
+  const size_t max_entries = ARRAY_SIZE(&wdata->entries);
+
+  if ((max_entries == 0) || (wdata->hil_index < 0))
     return false;
 
-  int entry = wdata->hil_index;
-
-  do
+  struct SbEntry **sbep = NULL;
+  if ((sbep = next_new(wdata, wdata->hil_index + 1, max_entries)) ||
+      (C_SidebarNextNewWrap && (sbep = next_new(wdata, 0, wdata->hil_index))))
   {
-    entry++;
-    if (entry == wdata->entry_count)
-    {
-      if (C_SidebarNextNewWrap)
-        entry = 0;
-      else
-        return false;
-    }
-    if (entry == wdata->hil_index)
-      return false;
-  } while (!wdata->entries[entry]->mailbox->has_new &&
-           (wdata->entries[entry]->mailbox->msg_unread == 0));
+    wdata->hil_index = ARRAY_IDX(&wdata->entries, sbep);
+    return true;
+  }
 
-  wdata->hil_index = entry;
-  return true;
+  return false;
 }
 
 /**
@@ -99,20 +110,44 @@ static bool select_next_new(struct SidebarWindowData *wdata)
  */
 static bool select_prev(struct SidebarWindowData *wdata)
 {
-  if ((wdata->entry_count == 0) || (wdata->hil_index < 0))
+  if (ARRAY_EMPTY(&wdata->entries) || (wdata->hil_index < 0))
     return false;
 
-  int entry = wdata->hil_index;
 
-  do
+  struct SbEntry **sbep = NULL, **prev = NULL;
+  ARRAY_FOREACH_TO(sbep, &wdata->entries, wdata->hil_index)
   {
-    entry--;
-    if (entry < 0)
-      return false;
-  } while (wdata->entries[entry]->is_hidden);
+    if (!(*sbep)->is_hidden)
+      prev = sbep;
+  }
 
-  wdata->hil_index = entry;
-  return true;
+  if (prev)
+  {
+    wdata->hil_index = ARRAY_IDX(&wdata->entries, prev);
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * prev_new - Return the previous mailbox with new messages
+ * @param wdata SidebarWindowData struct
+ * @param begin Starting index for searching
+ * @param end   Ending index for searching
+ * @retval sbe  Pointer to the first entry with new messages
+ * @retval NULL None could be found
+ */
+static struct SbEntry **prev_new(struct SidebarWindowData *wdata, size_t begin, size_t end)
+{
+  struct SbEntry **sbep = NULL, **prev = NULL;
+  ARRAY_FOREACH_FROM_TO(sbep, &wdata->entries, begin, end)
+  {
+    if ((*sbep)->mailbox->has_new && (*sbep)->mailbox->msg_unread != 0)
+      prev = sbep;
+  }
+
+  return prev;
 }
 
 /**
@@ -124,28 +159,20 @@ static bool select_prev(struct SidebarWindowData *wdata)
  */
 static bool select_prev_new(struct SidebarWindowData *wdata)
 {
-  if ((wdata->entry_count == 0) || (wdata->hil_index < 0))
+  const size_t max_entries = ARRAY_SIZE(&wdata->entries);
+
+  if ((max_entries == 0) || (wdata->hil_index < 0))
     return false;
 
-  int entry = wdata->hil_index;
-
-  do
+  struct SbEntry **sbep = NULL;
+  if ((sbep = prev_new(wdata, 0, wdata->hil_index)) ||
+      (C_SidebarNextNewWrap && (sbep = prev_new(wdata, wdata->hil_index + 1, max_entries))))
   {
-    entry--;
-    if (entry < 0)
-    {
-      if (C_SidebarNextNewWrap)
-        entry = wdata->entry_count - 1;
-      else
-        return false;
-    }
-    if (entry == wdata->hil_index)
-      return false;
-  } while (!wdata->entries[entry]->mailbox->has_new &&
-           (wdata->entries[entry]->mailbox->msg_unread == 0));
+    wdata->hil_index = ARRAY_IDX(&wdata->entries, sbep);
+    return true;
+  }
 
-  wdata->hil_index = entry;
-  return true;
+  return false;
 }
 
 /**
@@ -155,7 +182,7 @@ static bool select_prev_new(struct SidebarWindowData *wdata)
  */
 static bool select_page_down(struct SidebarWindowData *wdata)
 {
-  if ((wdata->entry_count == 0) || (wdata->bot_index < 0))
+  if (ARRAY_EMPTY(&wdata->entries) || (wdata->bot_index < 0))
     return false;
 
   int orig_hil_index = wdata->hil_index;
@@ -163,7 +190,7 @@ static bool select_page_down(struct SidebarWindowData *wdata)
   wdata->hil_index = wdata->bot_index;
   select_next(wdata);
   /* If the rest of the entries are hidden, go up to the last unhidden one */
-  if (wdata->entries[wdata->hil_index]->is_hidden)
+  if ((*ARRAY_GET(&wdata->entries, wdata->hil_index))->is_hidden)
     select_prev(wdata);
 
   return (orig_hil_index != wdata->hil_index);
@@ -176,7 +203,7 @@ static bool select_page_down(struct SidebarWindowData *wdata)
  */
 static bool select_page_up(struct SidebarWindowData *wdata)
 {
-  if ((wdata->entry_count == 0) || (wdata->top_index < 0))
+  if (ARRAY_EMPTY(&wdata->entries) || (wdata->top_index < 0))
     return false;
 
   int orig_hil_index = wdata->hil_index;
@@ -184,7 +211,7 @@ static bool select_page_up(struct SidebarWindowData *wdata)
   wdata->hil_index = wdata->top_index;
   select_prev(wdata);
   /* If the rest of the entries are hidden, go down to the last unhidden one */
-  if (wdata->entries[wdata->hil_index]->is_hidden)
+  if ((*ARRAY_GET(&wdata->entries, wdata->hil_index))->is_hidden)
     select_next(wdata);
 
   return (orig_hil_index != wdata->hil_index);
@@ -197,13 +224,13 @@ static bool select_page_up(struct SidebarWindowData *wdata)
  */
 static bool select_first(struct SidebarWindowData *wdata)
 {
-  if ((wdata->entry_count == 0) || (wdata->hil_index < 0))
+  if (ARRAY_EMPTY(&wdata->entries) || (wdata->hil_index < 0))
     return false;
 
   int orig_hil_index = wdata->hil_index;
 
   wdata->hil_index = 0;
-  if (wdata->entries[wdata->hil_index]->is_hidden)
+  if ((*ARRAY_GET(&wdata->entries, wdata->hil_index))->is_hidden)
     if (!select_next(wdata))
       wdata->hil_index = orig_hil_index;
 
@@ -217,12 +244,12 @@ static bool select_first(struct SidebarWindowData *wdata)
  */
 static bool select_last(struct SidebarWindowData *wdata)
 {
-  if ((wdata->entry_count == 0) || (wdata->hil_index < 0))
+  if (ARRAY_EMPTY(&wdata->entries) || (wdata->hil_index < 0))
     return false;
 
   int orig_hil_index = wdata->hil_index;
 
-  wdata->hil_index = wdata->entry_count;
+  wdata->hil_index = ARRAY_SIZE(&wdata->entries);
   if (!select_prev(wdata))
     wdata->hil_index = orig_hil_index;
 

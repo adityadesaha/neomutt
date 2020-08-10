@@ -26,6 +26,7 @@
 #include <stdbool.h>
 #include "mutt/lib.h"
 #include "gui/lib.h"
+#include "mutt/array.h"
 
 extern struct ListHead SidebarWhitelist;
 
@@ -56,9 +57,7 @@ enum DivType
  */
 struct SidebarWindowData
 {
-  struct SbEntry **entries;  ///< Items to display in the sidebar
-  int entry_count;           ///< Number of items in entries
-  int entry_max;             ///< Size of the entries array
+  ARRAY_HEAD(, struct SbEntry *) entries; ///< Items to display in the sidebar
 
   int top_index;             ///< First mailbox visible in sidebar
   int opn_index;             ///< Current (open) mailbox
