@@ -61,9 +61,7 @@ bool C_MenuScroll; ///< Config: Scroll the menu/index by one line, rather than a
 char *SearchBuffers[MENU_MAX];
 
 /* These are used to track the active menus, for redraw operations. */
-static size_t MenuStackCount = 0;
-static size_t MenuStackLen = 0;
-static struct Menu **MenuStack = NULL;
+ARRAY_HEAD(, struct Menu *) MenuStack = ARRAY_HEAD_INITIALIZER;
 
 #define DIRECTION ((neg * 2) + 1)
 
@@ -1016,7 +1014,8 @@ void mutt_menu_add_dialog_row(struct Menu *menu, const char *row)
  */
 static struct Menu *get_current_menu(void)
 {
-  return MenuStackCount ? MenuStack[MenuStackCount - 1] : NULL;
+  struct Menu **mp = ARRAY_LAST(&MenuStack);
+  return mp ? *mp : NULL;
 }
 
 /**
@@ -1027,13 +1026,7 @@ static struct Menu *get_current_menu(void)
  */
 void mutt_menu_push_current(struct Menu *menu)
 {
-  if (MenuStackCount >= MenuStackLen)
-  {
-    MenuStackLen += 5;
-    mutt_mem_realloc(&MenuStack, MenuStackLen * sizeof(struct Menu *));
-  }
-
-  MenuStack[MenuStackCount++] = menu;
+  ARRAY_ADD(&MenuStack, menu);
   CurrentMenu = menu->type;
 }
 
@@ -1047,13 +1040,13 @@ void mutt_menu_pop_current(struct Menu *menu)
 {
   struct Menu *prev_menu = NULL;
 
-  if (!MenuStackCount || (MenuStack[MenuStackCount - 1] != menu))
+  if (ARRAY_EMPTY(&MenuStack) || (*ARRAY_LAST(&MenuStack) != menu))
   {
     mutt_debug(LL_DEBUG1, "called with inactive menu\n");
     return;
   }
+  ARRAY_SHRINK(&MenuStack, 1);
 
-  MenuStackCount--;
   prev_menu = get_current_menu();
   if (prev_menu)
   {
