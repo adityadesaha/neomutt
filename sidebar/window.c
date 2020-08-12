@@ -45,6 +45,9 @@
 #include "mutt_globals.h"
 #include "muttlib.h"
 
+static int calc_count = 0;
+static int paint_count = 0;
+
 /**
  * imap_is_prefix - Check if folder matches the beginning of mbox
  * @param folder Folder
@@ -706,6 +709,7 @@ int sb_recalc(struct MuttWindow *win)
     row++;
   }
 
+  calc_count++;
   win->actions |= WA_REPAINT;
   return 0;
 }
@@ -828,5 +832,9 @@ int sb_repaint(struct MuttWindow *win)
                    num_cols - wdata->divider_width);
   draw_divider(wdata, win, num_rows, num_cols);
 
+  paint_count++;
+  mutt_window_move(win, 0, num_rows - 1);
+  mutt_curses_set_color(MT_COLOR_NORMAL);
+  mutt_window_printf("C%d,P%d", calc_count, paint_count);
   return 0;
 }
