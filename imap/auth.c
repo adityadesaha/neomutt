@@ -72,6 +72,26 @@ static const struct ImapAuth imap_authenticators[] = {
 };
 
 /**
+ * imap_auth_is_valid - Check if string is a valid imap authentication method
+ * @param authenticator Authenticator string to check
+ * @retval bool Result, e.g. True if argument is a valid auth method
+ *
+ * Validate whether an input string is an accepted imap authentication method as
+ * defined by imap_authenticators.
+ */
+bool imap_auth_is_valid(const char *authenticator)
+{
+  for (size_t i = 0; i < mutt_array_size(imap_authenticators); i++)
+  {
+    const struct ImapAuth *auth = &imap_authenticators[i];
+    if (auth->method && mutt_istr_equal(auth->method, authenticator))
+      return true;
+  }
+
+  return false;
+}
+
+/**
  * imap_authenticate - Authenticate to an IMAP server
  * @param adata Imap Account data
  * @retval num Result, e.g. #IMAP_AUTH_SUCCESS
