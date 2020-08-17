@@ -2,8 +2,6 @@ freebsd_instance:
   image_family: freebsd-12-1
 
 task:
-  only_if: $CIRRUS_BRANCH == "master" || $CIRRUS_PR != ""
-  skip: $CIRRUS_PR_DRAFT == "true"
   env:
     CIRRUS_CLONE_DEPTH: 3
     PKG_UPDATE: pkg update -f
