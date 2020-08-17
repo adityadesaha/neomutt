@@ -385,6 +385,18 @@ static const struct PopAuth pop_authenticators[] = {
   { pop_auth_apop, "apop" },         { pop_auth_user, "user" }, { NULL, NULL },
 };
 
+bool pop_auth_is_valid(const char *authenticator)
+{
+  for (size_t i = 0; i < mutt_array_size(pop_authenticators); i++)
+  {
+    const struct PopAuth *auth = &pop_authenticators[i];
+    if (auth->method && mutt_istr_equal(auth->method, authenticator))
+      return true;
+  }
+
+  return false;
+}
+
 /**
  * pop_authenticate - Authenticate with a POP server
  * @param adata POP Account data
