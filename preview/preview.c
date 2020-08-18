@@ -10,49 +10,49 @@
 
 static struct MuttWindow *find_index_container(struct MuttWindow *root)
 {
-    bool has_sidebar = false;
+  bool has_sidebar = false;
 
+  {
+    struct MuttWindow *win = NULL;
+    TAILQ_FOREACH(win, &root->children, entries)
     {
-      struct MuttWindow *win = NULL;
-      TAILQ_FOREACH(win, &root->children, entries)
+      if (win->type == WT_SIDEBAR)
       {
-        if (win->type == WT_SIDEBAR)
-        {
-            has_sidebar = true;
-            break;
-        }
+        has_sidebar = true;
+        break;
       }
     }
+  }
 
-    struct MuttWindow *container;
-    if (has_sidebar)
-    {
-      struct MuttWindow *a = TAILQ_FIRST(&root->children);
-      struct MuttWindow *b = TAILQ_NEXT(a, entries);
-      container = a->type == WT_SIDEBAR /* if true, sidebar is on the right */ ? b : a;
-    }
-    else
-    {
-      container = root;
-    }
+  struct MuttWindow *container;
+  if (has_sidebar)
+  {
+    struct MuttWindow *a = TAILQ_FIRST(&root->children);
+    struct MuttWindow *b = TAILQ_NEXT(a, entries);
+    container = a->type == WT_SIDEBAR /* if true, sidebar is on the right */ ? b : a;
+  }
+  else
+  {
+    container = root;
+  }
 
-    return TAILQ_FIRST(&container->children); // Index container is the first
+  return TAILQ_FIRST(&container->children); // Index container is the first
 }
 
 static void debug_window_tree(struct MuttWindow *node, int indent)
 {
-    char *s_indent = malloc(4 * indent + 1);
-    memset(s_indent, ' ', 4 * indent);
-    s_indent[4 * indent] = 0;
+  char *s_indent = malloc(4 * indent + 1);
+  memset(s_indent, ' ', 4 * indent);
+  s_indent[4 * indent] = 0;
+  {
+    struct MuttWindow *win;
+    TAILQ_FOREACH(win, &node->children, entries)
     {
-      struct MuttWindow *win;
-      TAILQ_FOREACH(win, &node->children, entries)
-      {
-        mutt_message("%sWindow: %d\n", s_indent, win->type);
-        debug_window_tree(win, indent + 1);
-      }
+      mutt_message("%sWindow: %d\n", s_indent, win->type);
+      debug_window_tree(win, indent + 1);
     }
-    free(s_indent);
+  }
+  free(s_indent);
 }
 
 static int preview_recalc(struct MuttWindow *win)
@@ -70,32 +70,32 @@ static int preview_repaint(struct MuttWindow *win)
 
 void preview_win_init(struct MuttWindow *dlg)
 {
-    dlg->orient = MUTT_WIN_ORIENT_HORIZONTAL;
+  dlg->orient = MUTT_WIN_ORIENT_HORIZONTAL;
 
-    struct MuttWindow *index_container = find_index_container(dlg);
-    struct MuttWindow *bar = TAILQ_LAST(&index_container->children, MuttWindowList);
-    mutt_window_remove_child(index_container, bar);
+  struct MuttWindow *index_container = find_index_container(dlg);
+  struct MuttWindow *bar = TAILQ_LAST(&index_container->children, MuttWindowList);
+  mutt_window_remove_child(index_container, bar);
 
-    struct MuttWindow *preview_window =
-        mutt_window_new(WT_PREVIEW, MUTT_WIN_ORIENT_HORIZONTAL,
-                        MUTT_WIN_SIZE_MAXIMISE, MUTT_WIN_SIZE_UNLIMITED, 5);
-    {
-      preview_window->state.visible = C_PreviewEnabled && C_PreviewHeight > 0;
-      preview_window->wdata = preview_wdata_new();
-      preview_window->wdata_free = preview_wdata_free;
-      preview_window->recalc = preview_recalc;
-      preview_window->repaint = preview_repaint;
-    }
+  struct MuttWindow *preview_window =
+      mutt_window_new(WT_PREVIEW, MUTT_WIN_ORIENT_HORIZONTAL, MUTT_WIN_SIZE_FIXED,
+                      MUTT_WIN_SIZE_UNLIMITED, C_PreviewHeight);
+  {
+    preview_window->state.visible = C_PreviewEnabled && C_PreviewHeight > 0;
+    preview_window->wdata = preview_wdata_new();
+    preview_window->wdata_free = preview_wdata_free;
+    preview_window->recalc = preview_recalc;
+    preview_window->repaint = preview_repaint;
+  }
 
-    mutt_window_add_child(index_container, preview_window);
-    mutt_window_add_child(index_container, bar);
+  mutt_window_add_child(index_container, preview_window);
+  mutt_window_add_child(index_container, bar);
 
-    { // notification registrering
-      notify_observer_add(NeoMutt->notify, NT_WINDOW, preview_neomutt_observer, preview_window);
-      notify_observer_add(dlg->notify, NT_USER_INDEX, preview_dialog_observer, preview_window);
-    }
+  { // notification registering
+    notify_observer_add(NeoMutt->notify, NT_WINDOW, preview_neomutt_observer, preview_window);
+    notify_observer_add(dlg->notify, NT_USER_INDEX, preview_dialog_observer, preview_window);
+  }
 
-    debug_window_tree(dlg, 0);
+  debug_window_tree(dlg, 0);
 }
 
 void preview_win_shutdown(struct MuttWindow *dlg)
