@@ -52,14 +52,14 @@ static void filter_and_add(struct Buffer *buffer, char *source)
     bool add_space = false;
     if (source[idx] != '\0')
     {
-        source[idx] = '\0';
-        add_space = true;
+      source[idx] = '\0';
+      add_space = true;
     }
 
     mutt_buffer_strip_formatting(buffer, source, false, true);
     if (add_space)
     {
-        source[idx] = ' ';
+      source[idx] = ' ';
     }
 
     source += idx;
@@ -70,6 +70,13 @@ void compute_mail_preview(struct PreviewWindowData *data)
 {
   struct Mailbox *m = data->mailbox;
   struct Email *e = data->current_email;
+
+  if (!e)
+  {
+    mutt_debug(LL_DEBUG1, "preview: no mail selected");
+    return;
+  }
+
   mutt_parse_mime_message(m, e);
   struct Message *msg = mx_msg_open(m, e->msgno);
 
@@ -104,7 +111,6 @@ void compute_mail_preview(struct PreviewWindowData *data)
 
   rewind(s.fp_out);
 
-  size_t added = 0;
   size_t sz_line = 1024;
   line = mutt_mem_malloc(sz_line);
   for (int i = 0; i < C_PreviewLines; ++i)
