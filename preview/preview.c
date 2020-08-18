@@ -68,7 +68,6 @@ static int preview_repaint(struct MuttWindow *win)
   return -1;
 }
 
-
 void preview_win_init(struct MuttWindow *dlg)
 {
     dlg->orient = MUTT_WIN_ORIENT_HORIZONTAL;
@@ -81,7 +80,7 @@ void preview_win_init(struct MuttWindow *dlg)
         mutt_window_new(WT_PREVIEW, MUTT_WIN_ORIENT_HORIZONTAL,
                         MUTT_WIN_SIZE_MAXIMISE, MUTT_WIN_SIZE_UNLIMITED, 5);
     {
-      preview_window->state.visible = true; // XXX: Config
+      preview_window->state.visible = C_PreviewEnabled && C_PreviewHeight > 0;
       preview_window->wdata = preview_wdata_new();
       preview_window->wdata_free = preview_wdata_free;
       preview_window->recalc = preview_recalc;
@@ -95,7 +94,6 @@ void preview_win_init(struct MuttWindow *dlg)
       notify_observer_add(NeoMutt->notify, NT_WINDOW, preview_neomutt_observer, preview_window);
       notify_observer_add(dlg->notify, NT_USER_INDEX, preview_dialog_observer, preview_window);
     }
-
 
     debug_window_tree(dlg, 0);
 }

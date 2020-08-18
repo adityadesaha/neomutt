@@ -752,6 +752,7 @@ struct ConfigSet *init_config(size_t size)
 #ifdef USE_SIDEBAR
   CONFIG_INIT(sidebar);
 #endif
+  CONFIG_INIT(preview);
 
   return cs;
 }
